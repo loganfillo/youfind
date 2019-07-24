@@ -1,17 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Title</title>
-  <link rel="stylesheet" href="popup.css">
-  <% if (NODE_ENV === 'development') { %>
-  <!-- Load some resources only in development environment -->
-  <% } %>
-</head>
-<body>
-  <div id="app">
-
-  </div>
-  <script src="popup.js"></script>
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+        <link rel="stylesheet" href="popup.css">
+        <% if (NODE_ENV === 'development') { %>
+            <!-- Load some resources only in development environment -->
+        <% } %>
+    </head>
+    <body>
+        <!-- <div class="app">
+            <div class="container-fluid">
+                <div class="row flex-nowrap m-2">
+                    <h1 class="col text-center font-weight-bold">You<span class="text-danger">Find</span></h1>
+                </div>
+                <div class="row flex-nowrap m-2">
+                    <div class="col">
+                        <button class="btn btn-danger" type="button" id="fetchTracks">Get Tracks</button>
+                    </div>
+                    <div class="col">
+                        <button class="btn btn-danger" type="button" id="fetchTrack">Get Track</button>
+                    </div>
+                </div>
+                <div class="row flex-nowrap m-2">
+                    <div class="col">
+                        <select class="col" id="tracks"></select>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="" value="" id="search">
+                    </div>
+                </div>
+            <div> -->
+        </div>
+        <script src="popup.js"></script>
+    </body>
 </html>
