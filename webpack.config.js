@@ -18,6 +18,9 @@ const config = {
     filename: '[name].js',
   },
   resolve: {
+    alias: {
+      'vue$': 'vue/dist/vue.runtime.esm.js' 
+    },
     extensions: ['.js', '.vue'],
   },
   module: {
