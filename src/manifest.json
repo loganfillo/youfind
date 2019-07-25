@@ -18,7 +18,7 @@
   },
 
   "commands": {
-     "_execute_browser_action": {
+     "_execute_page_action": {
          "suggested_key": {
             "windows": "Ctrl+Shift+F",
             "mac": "Command+Shift+F",
