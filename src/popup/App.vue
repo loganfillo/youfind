@@ -15,27 +15,27 @@
             <font-awesome-icon class="options-button float-right" icon="bars" size="2x"/>
         </b-col>
       </b-row>
-      <b-row class="p-2">
+      <b-row class="p-1">
         <b-input-group >
           <b-form-input class="search-input" ref="email"></b-form-input>
           <b-input-group-append>
             <b-button class="nav-button">
-              <font-awesome-icon icon="angle-up" size="sm" />
+              <font-awesome-icon icon="angle-up" size="lg" />
             </b-button>
             <b-button class="nav-button">
-              <font-awesome-icon icon="angle-down" size="sm" />
+              <font-awesome-icon icon="angle-down" size="lg" />
             </b-button>
           </b-input-group-append>
         </b-input-group>
       </b-row>
-      <b-row class="p-2">
+      <b-row class="p-1">
         <b-col class="align-self-center p-0">
           <div class="results-container overflow-auto">
           </div>
           
         </b-col>
       </b-row>
-      <b-row class="pb-2 pt-2">
+      <b-row class="pt-1 pb-1">
         <b-col class="align-self-center">
           <img class="yt-logo float-left" src="/icons/yt_logo_mono_light.png" alt="youtube"/>
         </b-col>
@@ -115,7 +115,7 @@ $dark-red: #e40303;
 
 .search-input {
   &:focus {
-    box-shadow: none !important;
+    box-shadow: inset 0 0 4px darkblue !important;
   }
 }
 
