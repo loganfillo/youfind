@@ -48,13 +48,16 @@
 </template>
 
 <script>
+
+import { youfind } from "./youfind.js"
+
 export default {
   data () {
     return {}
   },
   created(){
   },
-  mounted(){
+  mounted(){   
     this.$refs.email.$el.focus();
   }
 }
@@ -63,8 +66,9 @@ export default {
 <style lang="scss" scoped>
 
 @import url("https://fonts.googleapis.com/css?family=Roboto+Condensed:bold&display=swap");
+
 $dark-grey: #282828;
-$light-grey: #ced4da;
+$light-grey: #bdc2c7;
 $off-white: #f5f5f5;
 $white: #fff;
 $red: #ff0000;
