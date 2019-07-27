@@ -12,6 +12,7 @@ const config = {
   entry: {
     'background': './background.js',
     'popup/popup': './popup/popup.js',
+    'contentScript': './contentScript.js'
   },
   output: {
     path: __dirname + '/dist',
@@ -87,6 +88,9 @@ const config = {
 
           return JSON.stringify(jsonContent, null, 2);
         },
+      },
+      {
+        from: 'injection.js', to: 'injection.js'
       },
     ]),
   ],

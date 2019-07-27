@@ -18,7 +18,7 @@
   },
 
   "commands": {
-     "_execute_page_action": {
+     "_execute_browser_action": {
          "suggested_key": {
             "windows": "Ctrl+Shift+F",
             "mac": "Command+Shift+F",
@@ -29,16 +29,30 @@
   },
 
   "background": {
-      "scripts": [ "background.js" ],
-      "persistent": false
+      "scripts": [ "background.js" ]
   },
 
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "all_frames": true,
+      "run_at": "document_end",
+      "js": ["contentScript.js"] 
+    }
+  ],
+
+  "web_accessible_resources": [
+    "injection.js"
+  ],
+
   "permissions": [
+      "webRequest",
       "identity",
-      "activeTab"
+      "activeTab",
+      "*://*.youtube.com/*"
   ],
   "oauth2": {
-      "client_id": "346595486918-2di2vg7s6ackmbjsh9hnnh5b1jcn4j55.apps.googleusercontent.com",
+      "client_id": "346595486918-8vdej9m6sq43mn90k4npt2srum4fck75.apps.googleusercontent.com",
       "scopes": [ "https://www.googleapis.com/auth/youtube.force-ssl" ]
   }
 }
