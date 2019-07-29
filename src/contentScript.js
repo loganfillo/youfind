@@ -38,7 +38,7 @@ chrome.runtime.onConnect.addListener(function (port) {
     });
 });
 
-// inject the injection script into youtube DOM
+// insert the injection script into youtube DOM
 let script = document.createElement('script');
 script.src = chrome.runtime.getURL('injection.js');
 
