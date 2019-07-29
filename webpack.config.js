@@ -20,7 +20,7 @@ const config = {
   },
   resolve: {
     alias: {
-      'vue$': 'vue/dist/vue.runtime.esm.js' 
+      'vue$': 'vue/dist/vue.runtime.esm.js'
     },
     extensions: ['.js', '.vue'],
   },
@@ -91,6 +91,9 @@ const config = {
       },
       {
         from: 'injection.js', to: 'injection.js'
+      },
+      {
+        from: 'popup/youfind.js', to: 'popup/youfind.js'
       },
     ]),
   ],

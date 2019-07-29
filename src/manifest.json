@@ -48,6 +48,7 @@
   "permissions": [
       "webRequest",
       "identity",
+      "storage",
       "activeTab",
       "*://*.youtube.com/*"
   ],
