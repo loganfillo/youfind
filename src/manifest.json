@@ -1,59 +1,50 @@
 {
   "manifest_version": 2,
-
   "name": "YouFind",
-  "description":
-    "This extension will perform a Ctrl+F find on a youtube video",
-
+  "description": "This extension will perform a Ctrl+F find on a youtube video",
   "version": "1.0",
-
   "icons": {
     "48": "icons/icon_48.png",
     "128": "icons/icon_128.png"
   },
-
   "browser_action": {
-      "default_title": "YouFind",
-      "default_popup": "popup/popup.html"
+    "default_title": "YouFind",
+    "default_popup": "popup/popup.html"
   },
-
   "commands": {
-     "_execute_browser_action": {
-         "suggested_key": {
-            "windows": "Ctrl+Shift+F",
-            "mac": "Command+Shift+F",
-            "chromeos": "Ctrl+Shift+F",
-            "linux": "Ctrl+Shift+F"
-          }
+    "_execute_browser_action": {
+      "suggested_key": {
+        "windows": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F",
+        "chromeos": "Ctrl+Shift+F",
+        "linux": "Ctrl+Shift+F"
       }
+    }
   },
-
   "background": {
-      "scripts": [ "background.js" ]
+    "scripts": [
+      "background.js"
+    ]
   },
-
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
       "all_frames": true,
       "run_at": "document_end",
-      "js": ["contentScript.js"] 
+      "js": [
+        "contentScript.js"
+      ]
     }
   ],
-
   "web_accessible_resources": [
     "injection.js"
   ],
-
   "permissions": [
-      "webRequest",
-      "identity",
-      "storage",
-      "activeTab",
-      "*://*.youtube.com/*"
-  ],
-  "oauth2": {
-      "client_id": "346595486918-8vdej9m6sq43mn90k4npt2srum4fck75.apps.googleusercontent.com",
-      "scopes": [ "https://www.googleapis.com/auth/youtube.force-ssl" ]
-  }
+    "storage",
+    "activeTab",
+    "*://*.youtube.com/*"
+  ]
 }
+  

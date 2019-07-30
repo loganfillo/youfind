@@ -16,7 +16,7 @@ window.addEventListener("message", event => {
 });
 
 chrome.runtime.onConnect.addListener(function (port) {
-    port.onMessage.addListener(function (message) {
+    port.onMessage.addListener(message => {
         switch (message.type) {
             case "changeCaptionLanguage":
                 window.postMessage({

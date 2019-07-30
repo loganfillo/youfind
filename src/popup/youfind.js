@@ -1,9 +1,10 @@
 let youfind = {
-    onYouTube, 
-    connectToPort,
-    getCaptionTracks,
-    getParsedTrack,
-    seekToTime
+  onYouTube,
+  connectToPort,
+  getVideoId,
+  getCaptionTracks,
+  getParsedTrack,
+  seekToTime
 }
 
 function onYouTube() {
@@ -19,87 +20,161 @@ function onYouTube() {
 }
 
 function connectToPort() {
-    return new Promise((resolve, reject) => {
-        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-              resolve(chrome.tabs.connect(tabs[0].id));
-        });
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      resolve(chrome.tabs.connect(tabs[0].id));
     });
+  });
+}
+
+function getVideoId() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      let tabUrl = new URL(tabs[0].url);
+      let videoId = tabUrl.searchParams.get("v");
+      resolve(videoId);
+    });
+  });
 }
 
 function getCaptionTracks() {
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.get(["captionTracks"], result => {
-        if (!result.hasOwnProperty("captionTracks")) {
-          setTimeout(() => {
-            resolve(getCaptionTracks());
-          }, 500);
-        } else {
-          resolve(result.captionTracks);
-        }
-      });
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["captionTracks"], result => {
+      if (!result.hasOwnProperty("captionTracks")) {
+        setTimeout(() => {
+          resolve(getCaptionTracks());
+        }, 500);
+      } else {
+        resolve(result.captionTracks);
+      }
     });
+  });
 }
 
-function getParsedTrack(captionTracks, language) {  
+function getParsedTrack(captionTracks, language, videoId) {
   return new Promise((resolve, reject) => {
-    let unparsedTrack = 0;
-    captionTracks.find( track => {
-      if (track.languageCode == language.languageCode){
-        if ((!track.hasOwnProperty("kind") && language.kind == "")||(track.kind == language.kind)){
-          unparsedTrack = track;
+    let key = videoId + language.languageCode + language.kind;
+    chrome.storage.local.get([key], result => {
+      if (result.hasOwnProperty(key)) {
+        resolve(result[key])
+      } else {
+        let unparsedTrack = 0;
+        captionTracks.find(track => {
+          if (track.languageCode == language.languageCode) {
+            if ((!track.hasOwnProperty("kind") && language.kind == "") || (track.kind == language.kind)) {
+              unparsedTrack = track;
+            }
+          }
+        });
+        if (unparsedTrack) {
+          fetchAndParseTrack(unparsedTrack)
+            .then(response => {
+              addKeyToQueue(key, response.length)
+                .then(() => {
+                  chrome.storage.local.set({ [key]: response });
+                  resolve(response);
+                });
+            });
+        } else {
+          reject({ message: "No track available for selected language" });
         }
       }
     });
-    if (unparsedTrack){
-      fetchAndParseTrack(unparsedTrack)
-      .then( response => resolve(response));
-    } else {
-      reject({message: "No track available for current language"});
-    }
   })
 }
 
-function seekToTime(port, time){
+function seekToTime(port, time) {
   port.postMessage({
     type: "seekToTime",
     time: time
   });
 }
 
-function fetchAndParseTrack(track) {
-  return new Promise((resolve, reject) => {    
-    let trackUrl = track.baseUrl;        
-    fetch(trackUrl)
-    .then( response => response.text())
-    .then( text => (new window.DOMParser()).parseFromString(text, "text/xml"))
-    .then( data => {
-      let trackDOM = data;
-      resolve(parseXML(trackDOM));
-    })
-    .catch( error => {
-      reject({message: "Could not fetch and parse current track", error: error});
+const MAX_STORAGE = 5242880;
+
+function addKeyToQueue(key, trackLength) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["localStorageKeyQueue"], async result => {      
+      let queue = result.localStorageKeyQueue;
+      // Very rough approximation      
+      let trackSizeInBytes = trackLength * 500;
+      if (trackSizeInBytes > MAX_STORAGE){
+        reject({message: "Track too large"});
+      }
+      while (!await isEnoughLocalStorage(trackSizeInBytes)) {        
+        queue = await popKeyFromQueue(queue);
+      }
+      queue.push(key);
+      chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
+        chrome.storage.local.get(null, result => console.log(result));
+        resolve();
+      });
     });
   });
 }
 
-function parseXML(trackDOM) {
-    let parsedTrack = [];
-    let textElems = trackDOM.getElementsByTagName("text");
-    for (let elem of textElems){
-      let caption = {};
-      caption.start = parseFloat(elem.attributes.getNamedItem("start").value);
-      caption.end = caption.start + parseFloat(elem.attributes.getNamedItem("dur").value);
-      caption.text = escapeXML(elem.innerHTML);
-      parsedTrack.push(caption);
+function isEnoughLocalStorage(trackSizeInBytes) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.getBytesInUse(null, bytesInUse => {
+      console.log(MAX_STORAGE - (trackSizeInBytes + bytesInUse));
+      if (MAX_STORAGE < (trackSizeInBytes + bytesInUse)) {
+        console.log("not enough storage");
+        resolve(false)
+      } else {
+        console.log("enough storage");
+        resolve(true);
+      }
+    });
+  });
+}
+
+function popKeyFromQueue(queue) {
+  return new Promise((resolve, reject) => {
+    if (queue.length > 0){
+      let keyToRemove = queue.pop();
+      console.log("removing", keyToRemove);
+      chrome.storage.local.remove([keyToRemove], () => {
+        console.log(queue); 
+        resolve(queue);
+      });
     }
-    return parsedTrack;
+  });
+}
+
+function fetchAndParseTrack(track) {
+  return new Promise((resolve, reject) => {
+    let trackUrl = track.baseUrl;
+    fetch(trackUrl)
+      .then(response => response.text())
+      .then(text => (new window.DOMParser()).parseFromString(text, "text/xml"))
+      .then(data => {
+        let trackDOM = data;
+        resolve(parseXML(trackDOM));
+      })
+      .catch(error => {
+        reject({ message: "Could not fetch and parse current track", error: error });
+      });
+  });
+}
+
+function parseXML(trackDOM) {
+  let parsedTrack = [];
+  let textElems = trackDOM.getElementsByTagName("text");
+  for (let elem of textElems) {
+    let caption = {};
+    caption.start = parseFloat(elem.attributes.getNamedItem("start").value);
+    caption.end = caption.start + parseFloat(elem.attributes.getNamedItem("dur").value);
+    caption.text = escapeXML(elem.innerHTML);
+    parsedTrack.push(caption);
+  }
+  return parsedTrack;
 }
 
 function escapeXML(xmlText) {
   return xmlText
-  .replace(/&amp;#38;/g, "&")
-  .replace(/&amp;#39;/g, "'")
-  .replace(/&amp;#34;/g, '"')
+    .replace(/&amp;#38;/g, "&")
+    .replace(/&amp;#39;/g, "'")
+    .replace(/&amp;#34;/g, '"')
 }
 
 export default youfind;

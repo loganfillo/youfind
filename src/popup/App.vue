@@ -102,7 +102,6 @@ export default {
       let hour = prependZero(getTime(time, 3600, 624));
       let min  =  prependZero(getTime(time, 60, 60));
       let sec  = prependZero(getTime(time, 1, 60));
-      console.log(hour, min, sec);
       
       return hour + ":" + min + ":" + sec;
       
@@ -113,8 +112,10 @@ export default {
       this.onYouTube = await youfind.onYouTube();
       if (this.onYouTube){
         this.port = await youfind.connectToPort();
+        this.videoId = await youfind.getVideoId();
         this.captionsTracks = await youfind.getCaptionTracks();
-        this.currentTrack = await youfind.getParsedTrack(this.captionsTracks, this.currentLanguage);
+        this.videoId = await youfind.getVideoId();
+        this.currentTrack = await youfind.getParsedTrack(this.captionsTracks, this.currentLanguage, this.videoId);
       }
     } catch (error) {
       console.log(error);
@@ -131,7 +132,7 @@ export default {
 
 $almost-black: #282828;
 $dark-grey: #6d6d6d;
-$light-grey: #c1c1c1;
+$light-grey: #868686;
 $very-light-grey: #bdc2c7;
 $off-white: #f5f5f5;
 $white: #fff;
@@ -195,10 +196,10 @@ $dark-red: #e40303;
   padding: 15px;
   color: $almost-black;
   background-color: transparent;
-  border-bottom: 1px solid $light-grey;
+  border-bottom: 1px solid $very-light-grey;
   width: 100%;
   &:hover {
-    background-color: $light-grey;
+    background-color: $off-white;
   }
 }
 
@@ -215,11 +216,12 @@ $dark-red: #e40303;
 .results-container {
   border: 1px solid $very-light-grey;
   border-radius: 0.25rem;
-  background-color: $off-white;
+  background-color: $white;
   width: 100%;
   height:200px;
 }
 
 @import "node_modules/bootstrap/scss/bootstrap";
 @import "node_modules/bootstrap-vue/src/index.scss";
+
 </style>
