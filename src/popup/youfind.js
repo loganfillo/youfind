@@ -4,6 +4,8 @@ let youfind = {
   getVideoId,
   getCaptionTracks,
   getParsedTrack,
+  getQuerySession,
+  storeQuerySession,
   seekToTime
 }
 
@@ -39,13 +41,17 @@ function getVideoId() {
 
 function getCaptionTracks() {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["captionTracks"], result => {
+    chrome.storage.local.get(["captionTracks"], result => {   
       if (!result.hasOwnProperty("captionTracks")) {
         setTimeout(() => {
           resolve(getCaptionTracks());
         }, 500);
       } else {
-        resolve(result.captionTracks);
+        if (result.captionTracks.length > 0){
+          resolve(result.captionTracks);
+        } else {
+          reject({message: "This video does not have any caption tracks"});
+        }
       }
     });
   });
@@ -68,11 +74,14 @@ function getParsedTrack(captionTracks, language, videoId) {
         });
         if (unparsedTrack) {
           fetchAndParseTrack(unparsedTrack)
-            .then(response => {
-              addKeyToQueue(key, response.length)
+            .then(parsedTrack => {
+              addKeyToQueue(key, parsedTrack.length)
                 .then(() => {
-                  chrome.storage.local.set({ [key]: response });
-                  resolve(response);
+                  chrome.storage.local.set({[key]: parsedTrack });
+                  resolve(parsedTrack);
+                })
+                .catch(() => {
+                  reject({message: "Track too large for memory"});
                 });
             });
         } else {
@@ -83,6 +92,29 @@ function getParsedTrack(captionTracks, language, videoId) {
   })
 }
 
+function getQuerySession(videoId) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["querySession"], result => {
+      let session = result.querySession;
+      if (session.videoId == videoId){
+        resolve(session.query);
+      } else {
+        resolve("");
+      }
+    });
+  });
+}
+
+function storeQuerySession(videoId, query){
+  return new Promise((resolve, reject) => {
+    let session = { videoId, query };
+    chrome.storage.local.set({querySession: session}, () => {
+      resolve();
+    });
+  });
+
+}
+
 function seekToTime(port, time) {
   port.postMessage({
     type: "seekToTime",
@@ -90,19 +122,22 @@ function seekToTime(port, time) {
   });
 }
 
-const MAX_STORAGE = 5242880;
+// const MAX_STORAGE = 5242880;
+const MAX_STORAGE = 100000;
 
 function addKeyToQueue(key, trackLength) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["localStorageKeyQueue"], async result => {      
       let queue = result.localStorageKeyQueue;
       // Very rough approximation      
-      let trackSizeInBytes = trackLength * 500;
+      let trackSizeInBytes = trackLength * 100;
       if (trackSizeInBytes > MAX_STORAGE){
-        reject({message: "Track too large"});
+        reject();
       }
+      chrome.storage.local.get(null, result => console.log(result));
+
       while (!await isEnoughLocalStorage(trackSizeInBytes)) {        
-        queue = await popKeyFromQueue(queue);
+        queue = await removeKeyFromQueue(queue);
       }
       queue.push(key);
       chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
@@ -116,7 +151,6 @@ function addKeyToQueue(key, trackLength) {
 function isEnoughLocalStorage(trackSizeInBytes) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.getBytesInUse(null, bytesInUse => {
-      console.log(MAX_STORAGE - (trackSizeInBytes + bytesInUse));
       if (MAX_STORAGE < (trackSizeInBytes + bytesInUse)) {
         console.log("not enough storage");
         resolve(false)
@@ -128,10 +162,10 @@ function isEnoughLocalStorage(trackSizeInBytes) {
   });
 }
 
-function popKeyFromQueue(queue) {
+function removeKeyFromQueue(queue) {
   return new Promise((resolve, reject) => {
     if (queue.length > 0){
-      let keyToRemove = queue.pop();
+      let keyToRemove = queue.shift();
       console.log("removing", keyToRemove);
       chrome.storage.local.remove([keyToRemove], () => {
         console.log(queue); 
@@ -172,9 +206,9 @@ function parseXML(trackDOM) {
 
 function escapeXML(xmlText) {
   return xmlText
-    .replace(/&amp;#38;/g, "&")
-    .replace(/&amp;#39;/g, "'")
-    .replace(/&amp;#34;/g, '"')
+    .replace(/&?(amp;)?(#38;)/g, "&")
+    .replace(/&?(amp;)?(#39;)/g, "'")
+    .replace(/&?(amp;)?(#34;)/g, '"')
 }
 
 export default youfind;

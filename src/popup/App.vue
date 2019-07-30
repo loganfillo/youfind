@@ -10,13 +10,18 @@
           </h5>
         </b-col>
         <b-col class="align-self-center">
-          <font-awesome-icon class="options-button float-right" icon="bars" size="lg" />
+          <button class="options-button float-right" @click="$bvModal.show('options-modal')">
+            <font-awesome-icon  icon="bars" size="lg"  />
+          </button>
+          <b-modal id="options-modal" title="Options" hide-footer>
+            <b-button class="mt-3" block @click="$bvModal.hide('options-modal')">ok</b-button>
+          </b-modal>
         </b-col>
       </b-row>
       <div v-show="onYouTube">
         <b-row class="p-1">
         <b-input-group>
-          <b-form-input class="search-bar" ref="searchBar" v-model="query" autofocus></b-form-input>
+          <b-form-input class="search-bar" ref="searchBar" v-model="query" @change="storeQuerySession()"></b-form-input>
           <b-input-group-append>
             <b-button class="nav-button">
               <font-awesome-icon icon="angle-up" size="sm" />
@@ -31,7 +36,7 @@
         <b-col class="align-self-center p-0">
           <div class="results-container overflow-auto">
             <ul>
-              <button class="search-match-button" v-for="match in matchingCaptions" v-bind:key="match.start" @click="seekToTime(match)">
+              <button class="search-match-button" v-for="match in matchingCaptions" v-bind:key="match.start + match.text" @click="seekToTime(match)">
                 <span class="time-text">{{formatTime(match.start)}}</span>
                 <div v-html="highlightMatch(match.text)"></div>
               </button>
@@ -89,7 +94,7 @@ export default {
       if(this.query != ""){
         let match = new RegExp(this.query, "g");
         return stringWithMatch.replace(match, '<span class="highlighted">'+ this.query + "</span>");
-      }
+      }      
       return stringWithMatch;
     },
     formatTime: function(time){
@@ -104,7 +109,9 @@ export default {
       let sec  = prependZero(getTime(time, 1, 60));
       
       return hour + ":" + min + ":" + sec;
-      
+    },
+    storeQuerySession : function(){
+      youfind.storeQuerySession(this.videoId, this.query);
     }
   },
   async created() {
@@ -115,7 +122,8 @@ export default {
         this.videoId = await youfind.getVideoId();
         this.captionsTracks = await youfind.getCaptionTracks();
         this.videoId = await youfind.getVideoId();
-        this.currentTrack = await youfind.getParsedTrack(this.captionsTracks, this.currentLanguage, this.videoId);
+        this.currentTrack = await youfind.getParsedTrack(this.captionsTracks, this.currentLanguage, this.videoId);        
+        this.query = await youfind.getQuerySession(this.videoId);
       }
     } catch (error) {
       console.log(error);
@@ -175,6 +183,7 @@ $dark-red: #e40303;
 }
 
 .options-button {
+  background-color: transparent;
   color: $almost-black;
 }
 
@@ -208,7 +217,7 @@ $dark-red: #e40303;
 }
 
 .time-text {
-  font-size: 13px;
+  font-size: 12px;
   text-align: center;
   color: $light-grey;
 }

@@ -4,14 +4,22 @@ document.body.addEventListener("yt-navigate-finish", event => {
   console.log("navigate finished");
   let response = event.detail.response;
   let playerId = response.player.attrs.id;
-  let captions = response.playerResponse.captions
-  let captionTracks = captions.playerCaptionsTracklistRenderer.captionTracks;
-  window.postMessage({
-    type: "FROM_WEBPAGE", 
-    message:"captionTracks", 
-    tracks: captionTracks
-  }, "*");
   player = document.getElementById(playerId);
+  let captions = response.playerResponse.captions
+  if (typeof captions == "undefined"){
+    window.postMessage({
+      type: "FROM_WEBPAGE", 
+      message:"captionTracks", 
+      tracks: []
+    }, "*");
+  } else {
+    let captionTracks = captions.playerCaptionsTracklistRenderer.captionTracks;
+    window.postMessage({
+      type: "FROM_WEBPAGE", 
+      message:"captionTracks", 
+      tracks: captionTracks
+    }, "*");
+  }  
 });
 
 window.addEventListener("message", event => {  
