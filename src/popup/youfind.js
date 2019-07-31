@@ -97,18 +97,21 @@ function getQuerySession(videoId) {
     chrome.storage.local.get(["querySession"], result => {
       let session = result.querySession;
       if (session.videoId == videoId){
-        resolve(session.query);
+        resolve(session);
       } else {
-        resolve("");
+        resolve({
+          videoId,
+          query: "",
+          index: -1
+        });
       }
     });
   });
 }
 
-function storeQuerySession(videoId, query){
+function storeQuerySession(querySession){
   return new Promise((resolve, reject) => {
-    let session = { videoId, query };
-    chrome.storage.local.set({querySession: session}, () => {
+    chrome.storage.local.set({ querySession }, () => {
       resolve();
     });
   });
@@ -129,13 +132,11 @@ function addKeyToQueue(key, trackLength) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["localStorageKeyQueue"], async result => {      
       let queue = result.localStorageKeyQueue;
-      // Very rough approximation      
+      // VERY rough over-approximation      
       let trackSizeInBytes = trackLength * 100;
       if (trackSizeInBytes > MAX_STORAGE){
         reject();
       }
-      chrome.storage.local.get(null, result => console.log(result));
-
       while (!await isEnoughLocalStorage(trackSizeInBytes)) {        
         queue = await removeKeyFromQueue(queue);
       }
@@ -168,7 +169,6 @@ function removeKeyFromQueue(queue) {
       let keyToRemove = queue.shift();
       console.log("removing", keyToRemove);
       chrome.storage.local.remove([keyToRemove], () => {
-        console.log(queue); 
         resolve(queue);
       });
     }

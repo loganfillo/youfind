@@ -3,7 +3,8 @@ chrome.runtime.onInstalled.addListener( () => {
         localStorageKeyQueue: [], 
         querySession: {
             videoId: null,
-            query: ""
+            query: "",
+            currentIndex: -1
         }
     });
 });

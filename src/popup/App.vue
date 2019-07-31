@@ -4,10 +4,7 @@
       <b-row class="bottom-border pb-2 pt-2">
         <b-col class="align-self-center">
           <h5 class="youfind-logo float-left my-auto">
-            You
-            <span class="red-box">
-              Find
-              <!-- <font-awesome-icon class="mb-1" icon="search" size="xs"/> -->
+            You<span class="red-box">Find
             </span>
           </h5>
         </b-col>
@@ -16,7 +13,25 @@
             <font-awesome-icon icon="bars" size="lg" />
           </button>
           <b-modal id="options-modal" title="Options" hide-footer>
-            <b-button class="mt-3" block @click="$bvModal.hide('options-modal')">ok</b-button>
+            <b-row class="p-2">
+              <b-col class="text-muted">Caption Language</b-col>
+              <b-col>
+                <b-form-select v-model="options.language" v-bind:options="languageOptions"></b-form-select>
+              </b-col>
+            </b-row>
+            <b-row class="p-2">
+              <b-col class="text-muted">Highlight Color</b-col>
+              <b-col>
+                <b-form-select></b-form-select>
+              </b-col>
+            </b-row>
+            <b-row class="p-2">
+              <b-col class="text-muted">Enable CC</b-col>
+              <b-col>
+                <b-form-checkbox></b-form-checkbox>
+              </b-col>
+            </b-row>
+            <b-button class="mt-3" variant="outline-secondary" block @click="$bvModal.hide('options-modal')">Save Changes</b-button>
           </b-modal>
         </b-col>
       </b-row>
@@ -26,8 +41,8 @@
             <b-form-input
               class="search-bar"
               ref="searchBar"
-              v-model="query"
-              @change="storeQuerySession()"
+              v-model="querySession.query"
+              @input="storeQuerySession(true)"
             ></b-form-input>
             <b-input-group-append>
               <b-button class="nav-button" @click="navigateCaptions(0)" @keyup.>
@@ -47,7 +62,7 @@
                   class="search-match-button"
                   v-for="(match, index) in matchingCaptions"
                   v-bind:key="index"
-                  v-bind:class="{selected: currentIndex === index}"
+                  v-bind:class="{selected: querySession.index === index}"
                   @click="seekToTime(match, index)"
                 >
                   <span class="time-text">{{formatTime(match.start)}}</span>
@@ -80,42 +95,40 @@ export default {
   data() {
     return {
       onYouTube: false,
+      port: 0,
       captionsTracks: [],
       currentTrack: [],
       currentLanguage: {
         languageCode: "en",
         kind: "asr"
       },
-      currentIndex: -1,
-      port: 0,
-      query: ""
+      querySession: {
+        videoId: "",
+        query: "",
+        index: -1
+      },
+      options: {
+        highlightColor: "yellow",
+        language: {
+          languageCode: "en",
+          kind: "asr"
+        },
+        turnOnCC: true
+      },
+      languageOptions: []
     };
   },
   computed: {
-    matchingCaptions: function() {
+    matchingCaptions: function() {    
       return this.currentTrack.filter(caption => {
-        return caption.text.includes(this.query);
+        return caption.text.includes(this.querySession.query);
       });
     }
   },
-  created: function() {
-    window.addEventListener("keyup", this.keyListener);
-  },
   methods: {
     seekToTime: function(caption, index) {
-      this.currentIndex = index;
-      youfind.seekToTime(this.port, caption.start);
-    },
-    highlightMatch: function(stringWithMatch) {
-      stringWithMatch = "...".concat(stringWithMatch).concat("...");
-      if (this.query != "") {
-        let match = new RegExp(this.query, "g");
-        return stringWithMatch.replace(
-          match,
-          '<span class="highlighted">' + this.query + "</span>"
-        );
-      }
-      return stringWithMatch;
+      this.querySession.index = index;
+      youfind.seekToTime(this.port, caption.start-0.5);
     },
     formatTime: function(time) {
       function getTime(t, scale, mod) {
@@ -132,8 +145,23 @@ export default {
 
       return hour + ":" + min + ":" + sec;
     },
-    storeQuerySession: function() {
-      youfind.storeQuerySession(this.videoId, this.query);
+    highlightMatch: function(stringWithMatch) {
+      stringWithMatch = "...".concat(stringWithMatch).concat("...");
+      if (this.querySession.query != "") {
+        let match = new RegExp(this.querySession.query, "g");
+        return stringWithMatch.replace(
+          match,
+          '<span class="highlighted">' + this.querySession.query + "</span>"
+        );
+      }
+      return stringWithMatch;
+    },
+    storeQuerySession: function(changingQuery) {
+      if (changingQuery){
+        this.querySession.index = -1;      
+      }
+      this.scrollToFit();  
+      youfind.storeQuerySession(this.querySession);
     },
     keyListener: function(event) {
       if (event.keyCode == 38) {
@@ -142,25 +170,45 @@ export default {
         this.navigateCaptions(1);
       } else if (event.keyCode == 13) {
         this.seekToTime(
-          this.matchingCaptions[this.currentIndex],
-          this.currentIndex
+          this.matchingCaptions[this.querySession.index],
+          this.querySession.index
         );
       }
     },
     navigateCaptions: function(direction) {
       let captions = this.matchingCaptions;
-      if (this.currentIndex < captions.length - 1 && direction == 1) {
-        this.currentIndex++;
-      } else if (this.currentIndex > 0 && direction == 0) {
-        this.currentIndex--;
+      if (this.querySession.index < captions.length - 1 && direction == 1) {
+        this.querySession.index++;
+      } else if (this.querySession.index > 0 && direction == 0) {
+        this.querySession.index--;
       }
-      this.scrollToFit();
+      this.storeQuerySession(false);
     },
-    scrollToFit: function() {
-      let captionSize = 75;
-      let margin = this.currentIndex * captionSize;
-      this.$refs.resultsContainer.scrollTop = margin;
+    scrollToFit: function() {      
+      if (this.querySession.index < 0){        
+        this.$refs.resultsContainer.scrollTop = 0;
+      } else {
+        let captionSize = 75;
+        let margin = this.querySession.index * captionSize;
+        this.$refs.resultsContainer.scrollTop = margin;
+      }
+    },
+    createLanguageOptions: function() {
+        this.captionsTracks.forEach( track => {
+          let kind = "";
+          if (typeof track.kind != "undefined") kind = track.kind;
+          let option = {            
+            value: {
+              languageCode: track.languageCode,
+              kind: kind
+            }, text: track.name.simpleText
+          }          
+          this.languageOptions.push(option)
+        });
     }
+  },
+  created() {
+    window.addEventListener("keyup", this.keyListener);
   },
   async mounted() {
     try {
@@ -175,7 +223,9 @@ export default {
           this.currentLanguage,
           this.videoId
         );
-        this.query = await youfind.getQuerySession(this.videoId);
+        this.querySession = await youfind.getQuerySession(this.videoId);
+        this.createLanguageOptions();
+        this.scrollToFit();
         this.$refs.searchBar.focus();
       }
     } catch (error) {
@@ -251,8 +301,7 @@ $dark-red: #e40303;
 .search-match-button {
   text-align: center;
   text-decoration: none;
-  font-size: 15px;
-  padding: 5px;
+  font-size: 13px;
   color: $almost-black;
   background-color: transparent;
   border-bottom: 1px solid $very-light-grey;
@@ -282,7 +331,7 @@ $dark-red: #e40303;
   border-radius: 0.25rem;
   background-color: $white;
   width: 100%;
-  height: 250px;
+  height: 275px;
 }
 
 @import "node_modules/bootstrap/scss/bootstrap";
