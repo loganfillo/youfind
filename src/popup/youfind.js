@@ -204,11 +204,12 @@ function parseXML(trackDOM) {
   return parsedTrack;
 }
 
-function escapeXML(xmlText) {
+function escapeXML(xmlText) {  
   return xmlText
-    .replace(/&?(amp;)?(#38;)/g, "&")
-    .replace(/&?(amp;)?(#39;)/g, "'")
-    .replace(/&?(amp;)?(#34;)/g, '"')
+    .replace(/&amp;amp;/g, "&")
+    .replace(/&amp;#38;/g, "&")
+    .replace(/&amp;#39;/g, "'")
+    .replace(/&amp;#34;/g, '"')
 }
 
 export default youfind;
