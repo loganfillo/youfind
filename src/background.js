@@ -5,6 +5,14 @@ chrome.runtime.onInstalled.addListener( () => {
             videoId: null,
             query: "",
             currentIndex: -1
+        },
+        options: {
+            highlightColor: "yellow",
+            language: {
+              languageCode: "en",
+              kind: ""
+            },
+            turnOnCC: true
         }
     });
 });

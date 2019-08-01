@@ -4,8 +4,8 @@
       <b-row class="bottom-border pb-2 pt-2">
         <b-col class="align-self-center">
           <h5 class="youfind-logo float-left my-auto">
-            You<span class="red-box">Find
-            </span>
+            You
+            <span class="red-box">Find</span>
           </h5>
         </b-col>
         <b-col class="align-self-center">
@@ -16,22 +16,27 @@
             <b-row class="p-2">
               <b-col class="text-muted">Caption Language</b-col>
               <b-col>
-                <b-form-select v-model="options.language" v-bind:options="languageOptions"></b-form-select>
+                <b-form-select v-model="optionsForm.language" v-bind:options="languageOptions"></b-form-select>
               </b-col>
             </b-row>
             <b-row class="p-2">
               <b-col class="text-muted">Highlight Color</b-col>
               <b-col>
-                <b-form-select></b-form-select>
+                <b-form-select v-model="optionsForm.highlightColor"></b-form-select>
               </b-col>
             </b-row>
             <b-row class="p-2">
               <b-col class="text-muted">Enable CC</b-col>
               <b-col>
-                <b-form-checkbox></b-form-checkbox>
+                <b-form-checkbox v-model="optionsForm.turnOnCC"></b-form-checkbox>
               </b-col>
             </b-row>
-            <b-button class="mt-3" variant="outline-secondary" block @click="$bvModal.hide('options-modal')">Save Changes</b-button>
+            <b-button
+              class="mt-3"
+              variant="outline-secondary"
+              block
+              @click="saveOptionsForm()"
+            >Save Changes</b-button>
           </b-modal>
         </b-col>
       </b-row>
@@ -94,32 +99,19 @@ import youfind from "./youfind.js";
 export default {
   data() {
     return {
+      loading: false,
       onYouTube: false,
       port: 0,
       captionsTracks: [],
       currentTrack: [],
-      currentLanguage: {
-        languageCode: "en",
-        kind: "asr"
-      },
-      querySession: {
-        videoId: "",
-        query: "",
-        index: -1
-      },
-      options: {
-        highlightColor: "yellow",
-        language: {
-          languageCode: "en",
-          kind: "asr"
-        },
-        turnOnCC: true
-      },
-      languageOptions: []
+      currentOptions: {},
+      languageOptions: [],
+      optionsForm: {},
+      querySession: {}
     };
   },
   computed: {
-    matchingCaptions: function() {    
+    matchingCaptions: function() {
       return this.currentTrack.filter(caption => {
         return caption.text.includes(this.querySession.query);
       });
@@ -128,7 +120,7 @@ export default {
   methods: {
     seekToTime: function(caption, index) {
       this.querySession.index = index;
-      youfind.seekToTime(this.port, caption.start-0.5);
+      youfind.seekToTime(this.port, caption.start - 0.5);
     },
     formatTime: function(time) {
       function getTime(t, scale, mod) {
@@ -157,10 +149,10 @@ export default {
       return stringWithMatch;
     },
     storeQuerySession: function(changingQuery) {
-      if (changingQuery){
-        this.querySession.index = -1;      
+      if (changingQuery) {
+        this.querySession.index = -1;
       }
-      this.scrollToFit();  
+      this.scrollToFit();
       youfind.storeQuerySession(this.querySession);
     },
     keyListener: function(event) {
@@ -184,8 +176,8 @@ export default {
       }
       this.storeQuerySession(false);
     },
-    scrollToFit: function() {      
-      if (this.querySession.index < 0){        
+    scrollToFit: function() {
+      if (this.querySession.index < 0) {
         this.$refs.resultsContainer.scrollTop = 0;
       } else {
         let captionSize = 75;
@@ -194,33 +186,55 @@ export default {
       }
     },
     createLanguageOptions: function() {
-        this.captionsTracks.forEach( track => {
-          let kind = "";
-          if (typeof track.kind != "undefined") kind = track.kind;
-          let option = {            
-            value: {
-              languageCode: track.languageCode,
-              kind: kind
-            }, text: track.name.simpleText
-          }          
-          this.languageOptions.push(option)
-        });
+      this.captionsTracks.forEach(track => {
+        let kind = "";
+        if (typeof track.kind != "undefined") kind = track.kind;
+        let option = {
+          value: {
+            languageCode: track.languageCode,
+            kind: kind
+          },
+          text: track.name.simpleText
+        };
+        this.languageOptions.push(option);
+      });
+    },
+    saveOptionsForm: function() {
+      this.$bvModal.hide("options-modal");
+      this.loading = true;
+      youfind.storeOptions(this.optionsForm).then(() => {
+        if (this.optionsForm.language != this.currentOptions.language) {
+          this.currentOptions = this.optionsForm;
+          youfind
+            .getParsedTrack(
+              this.captionsTracks,
+              this.currentOptions.language,
+              this.videoId
+            )
+            .then(result => {
+              this.currentTrack = result;
+              this.loading = false;
+            })
+            .catch(error => console.log(error));
+        }
+      });
     }
   },
   created() {
     window.addEventListener("keyup", this.keyListener);
   },
   async mounted() {
+    this.loading = true;
     try {
       this.onYouTube = await youfind.onYouTube();
       if (this.onYouTube) {
         this.port = await youfind.connectToPort();
         this.videoId = await youfind.getVideoId();
+        this.currentOptions = await youfind.getOptions();
         this.captionsTracks = await youfind.getCaptionTracks();
-        this.videoId = await youfind.getVideoId();
         this.currentTrack = await youfind.getParsedTrack(
           this.captionsTracks,
-          this.currentLanguage,
+          this.currentOptions.language,
           this.videoId
         );
         this.querySession = await youfind.getQuerySession(this.videoId);
@@ -231,6 +245,7 @@ export default {
     } catch (error) {
       console.log(error);
     }
+    this.loading = false;
   }
 };
 </script>

@@ -2,6 +2,8 @@ let youfind = {
   onYouTube,
   connectToPort,
   getVideoId,
+  getOptions,
+  storeOptions,
   getCaptionTracks,
   getParsedTrack,
   getQuerySession,
@@ -39,18 +41,34 @@ function getVideoId() {
   });
 }
 
+function getOptions() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["options"], result => {
+      resolve(result.options);
+    });
+  });
+}
+
+function storeOptions(options) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ options }, () => {
+      resolve();
+    });
+  });
+}
+
 function getCaptionTracks() {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["captionTracks"], result => {   
+    chrome.storage.local.get(["captionTracks"], result => {
       if (!result.hasOwnProperty("captionTracks")) {
         setTimeout(() => {
           resolve(getCaptionTracks());
         }, 500);
       } else {
-        if (result.captionTracks.length > 0){
+        if (result.captionTracks.length > 0) {
           resolve(result.captionTracks);
         } else {
-          reject({message: "This video does not have any caption tracks"});
+          reject({ message: "This video does not have any caption tracks" });
         }
       }
     });
@@ -77,11 +95,11 @@ function getParsedTrack(captionTracks, language, videoId) {
             .then(parsedTrack => {
               addKeyToQueue(key, parsedTrack.length)
                 .then(() => {
-                  chrome.storage.local.set({[key]: parsedTrack });
+                  chrome.storage.local.set({ [key]: parsedTrack });
                   resolve(parsedTrack);
                 })
                 .catch(() => {
-                  reject({message: "Track too large for memory"});
+                  reject({ message: "Track too large for memory" });
                 });
             });
         } else {
@@ -96,7 +114,7 @@ function getQuerySession(videoId) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["querySession"], result => {
       let session = result.querySession;
-      if (session.videoId == videoId){
+      if (session.videoId == videoId) {
         resolve(session);
       } else {
         resolve({
@@ -109,7 +127,7 @@ function getQuerySession(videoId) {
   });
 }
 
-function storeQuerySession(querySession){
+function storeQuerySession(querySession) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.set({ querySession }, () => {
       resolve();
@@ -130,17 +148,20 @@ const MAX_STORAGE = 100000;
 
 function addKeyToQueue(key, trackLength) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["localStorageKeyQueue"], async result => {      
+    chrome.storage.local.get(["localStorageKeyQueue"], async result => {
       let queue = result.localStorageKeyQueue;
       // VERY rough over-approximation      
       let trackSizeInBytes = trackLength * 100;
-      if (trackSizeInBytes > MAX_STORAGE){
+      if (trackSizeInBytes > MAX_STORAGE) {
         reject();
       }
-      while (!await isEnoughLocalStorage(trackSizeInBytes)) {        
+      chrome.storage.local.get(null, result => console.log(result));
+      while (!await isEnoughLocalStorage(trackSizeInBytes)) {
         queue = await removeKeyFromQueue(queue);
       }
       queue.push(key);
+      console.log(queue);
+      
       chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
         chrome.storage.local.get(null, result => console.log(result));
         resolve();
@@ -165,7 +186,7 @@ function isEnoughLocalStorage(trackSizeInBytes) {
 
 function removeKeyFromQueue(queue) {
   return new Promise((resolve, reject) => {
-    if (queue.length > 0){
+    if (queue.length > 0) {
       let keyToRemove = queue.shift();
       console.log("removing", keyToRemove);
       chrome.storage.local.remove([keyToRemove], () => {
@@ -204,12 +225,13 @@ function parseXML(trackDOM) {
   return parsedTrack;
 }
 
-function escapeXML(xmlText) {  
+function escapeXML(xmlText) {
   return xmlText
     .replace(/&amp;amp;/g, "&")
     .replace(/&amp;#38;/g, "&")
     .replace(/&amp;#39;/g, "'")
     .replace(/&amp;#34;/g, '"')
+    .replace(/&quot;/g, "'");
 }
 
 export default youfind;
