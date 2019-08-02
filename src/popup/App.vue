@@ -4,8 +4,8 @@
       <b-row class="bottom-border pb-2 pt-2">
         <b-col class="align-self-center">
           <h5 class="youfind-logo float-left my-auto">
-            You
-            <span class="red-box">Find</span>
+            YouFind
+            <!-- <span class="red-box">Find</span> -->
           </h5>
         </b-col>
         <b-col class="align-self-center">
@@ -14,28 +14,28 @@
           </button>
           <b-modal id="options-modal" title="Options" hide-footer>
             <b-row class="p-2">
-              <b-col class="text-muted">Caption Language</b-col>
+              <b-col cols="5" class="text-muted"><small>Caption Language</small></b-col>
               <b-col>
                 <b-form-select v-model="optionsForm.language" v-bind:options="languageOptions"></b-form-select>
               </b-col>
             </b-row>
             <b-row class="p-2">
-              <b-col class="text-muted">Highlight Color</b-col>
+              <b-col cols="5" class="text-muted"><small>Highlight Color</small></b-col>
               <b-col>
-                <b-form-select v-model="optionsForm.highlightColor"></b-form-select>
+                <b-form-select v-model="optionsForm.highlightColor" v-bind:options="highlightColorOptions"></b-form-select>
               </b-col>
             </b-row>
             <b-row class="p-2">
-              <b-col class="text-muted">Enable CC</b-col>
+              <b-col cols="5" class="text-muted"><small>Auto-Enable CC</small></b-col>
               <b-col>
                 <b-form-checkbox v-model="optionsForm.turnOnCC"></b-form-checkbox>
               </b-col>
             </b-row>
             <b-button
               class="mt-3"
-              variant="outline-secondary"
+              variant="outline-primary"
               block
-              @click="saveOptionsForm()"
+              @click="submitOptionsForm()"
             >Save Changes</b-button>
           </b-modal>
         </b-col>
@@ -45,6 +45,7 @@
           <b-input-group>
             <b-form-input
               class="search-bar"
+              autocomplete="off"
               ref="searchBar"
               v-model="querySession.query"
               @input="storeQuerySession(true)"
@@ -83,7 +84,7 @@
       </div>
       <b-row class="pt-1 pb-1">
         <b-col class="align-self-center">
-          <img class="yt-logo float-left" src="/icons/yt_logo_mono_light.png" alt="youtube" />
+          <img class="yt-logo float-left" src="/icons/yt_logo_rgb_light.png" alt="youtube" />
         </b-col>
         <b-col class="align-self-center">
           <font-awesome-icon class="info-button float-right" icon="info-circle" size="lg" />
@@ -107,7 +108,13 @@ export default {
       currentOptions: {},
       languageOptions: [],
       optionsForm: {},
-      querySession: {}
+      querySession: {},
+      highlightColorOptions: [
+        {value: "yellow", text:"Yellow"},
+        {value: "lime", text:"Green"},
+        {value: "hotpink", text:"Pink"},
+        {value: "aqua", text:"Blue"},
+      ]      
     };
   },
   computed: {
@@ -138,12 +145,13 @@ export default {
       return hour + ":" + min + ":" + sec;
     },
     highlightMatch: function(stringWithMatch) {
+      console.log(this.currentOptions.highlightColor, this.optionsForm.highlightColor);
       stringWithMatch = "...".concat(stringWithMatch).concat("...");
       if (this.querySession.query != "") {
         let match = new RegExp(this.querySession.query, "g");
         return stringWithMatch.replace(
           match,
-          '<span class="highlighted">' + this.querySession.query + "</span>"
+          '<span style="background-color:' + this.currentOptions.highlightColor + '">' + this.querySession.query + "</span>"
         );
       }
       return stringWithMatch;
@@ -179,7 +187,8 @@ export default {
     scrollToFit: function() {
       if (this.querySession.index < 0) {
         this.$refs.resultsContainer.scrollTop = 0;
-      } else {
+      } else if (this.querySession.index){ 
+      }else {
         let captionSize = 75;
         let margin = this.querySession.index * captionSize;
         this.$refs.resultsContainer.scrollTop = margin;
@@ -199,24 +208,24 @@ export default {
         this.languageOptions.push(option);
       });
     },
-    saveOptionsForm: function() {
-      this.$bvModal.hide("options-modal");
+    submitOptionsForm: function() {
+      
       this.loading = true;
       youfind.storeOptions(this.optionsForm).then(() => {
-        if (this.optionsForm.language != this.currentOptions.language) {
-          this.currentOptions = this.optionsForm;
-          youfind
-            .getParsedTrack(
-              this.captionsTracks,
-              this.currentOptions.language,
-              this.videoId
-            )
-            .then(result => {
-              this.currentTrack = result;
-              this.loading = false;
-            })
-            .catch(error => console.log(error));
-        }
+        console.log("setting options");
+        this.currentOptions = this.optionsForm;
+        youfind
+          .getParsedTrack(
+            this.captionsTracks,
+            this.currentOptions.language,
+            this.videoId
+          )
+          .then(result => {
+            this.currentTrack = result;
+            this.loading = false;
+            this.$bvModal.hide("options-modal");
+          })
+          .catch(error => console.log(error));
       });
     }
   },
@@ -231,6 +240,7 @@ export default {
         this.port = await youfind.connectToPort();
         this.videoId = await youfind.getVideoId();
         this.currentOptions = await youfind.getOptions();
+        this.optionsForm = this.currentOptions;
         this.captionsTracks = await youfind.getCaptionTracks();
         this.currentTrack = await youfind.getParsedTrack(
           this.captionsTracks,
@@ -322,17 +332,17 @@ $dark-red: #e40303;
   border-bottom: 1px solid $very-light-grey;
   height: 75px;
   width: 100%;
-  &:hover {
-    background-color: $off-white;
-  }
-}
-
-.highlighted {
-  background-color: rgb(255, 251, 0);
+  // &:hover {
+  //   background-color: $off-white;
+  // }
+  &:focus {
+    outline: none !important;
+  } 
 }
 
 .selected {
-  background-color: $off-white;
+  box-shadow: inset 0 0 6px rgb(221, 220, 220) !important;
+  background-color: rgb(220, 241, 250);
 }
 
 .time-text {

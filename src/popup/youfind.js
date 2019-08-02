@@ -95,7 +95,9 @@ function getParsedTrack(captionTracks, language, videoId) {
             .then(parsedTrack => {
               addKeyToQueue(key, parsedTrack.length)
                 .then(() => {
-                  chrome.storage.local.set({ [key]: parsedTrack });
+                  chrome.storage.local.set({ [key]: parsedTrack }, () => {
+                    chrome.storage.local.get(null, result => console.log(result));
+                  });
                   resolve(parsedTrack);
                 })
                 .catch(() => {
@@ -144,7 +146,7 @@ function seekToTime(port, time) {
 }
 
 // const MAX_STORAGE = 5242880;
-const MAX_STORAGE = 100000;
+const MAX_STORAGE = 300000;
 
 function addKeyToQueue(key, trackLength) {
   return new Promise((resolve, reject) => {
@@ -154,18 +156,16 @@ function addKeyToQueue(key, trackLength) {
       let trackSizeInBytes = trackLength * 100;
       if (trackSizeInBytes > MAX_STORAGE) {
         reject();
-      }
-      chrome.storage.local.get(null, result => console.log(result));
-      while (!await isEnoughLocalStorage(trackSizeInBytes)) {
-        queue = await removeKeyFromQueue(queue);
-      }
-      queue.push(key);
-      console.log(queue);
-      
-      chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
+      } else {
         chrome.storage.local.get(null, result => console.log(result));
-        resolve();
-      });
+        while (!await isEnoughLocalStorage(trackSizeInBytes)) {
+          queue = await removeKeyFromQueue(queue);
+        }
+        queue.push(key);        
+        chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
+          resolve();
+        });
+      }
     });
   });
 }
@@ -231,7 +231,11 @@ function escapeXML(xmlText) {
     .replace(/&amp;#38;/g, "&")
     .replace(/&amp;#39;/g, "'")
     .replace(/&amp;#34;/g, '"')
-    .replace(/&quot;/g, "'");
+    .replace(/&amp;quot;/g, '"')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<");
 }
 
 export default youfind;

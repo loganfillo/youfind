@@ -1,8 +1,9 @@
 let player = null;
 
 document.body.addEventListener("yt-navigate-finish", event => {
-  console.log("navigate finished");
+  console.log("navigate finished", event);
   let response = event.detail.response;
+  // TODO player might be undefined??
   let playerId = response.player.attrs.id;
   player = document.getElementById(playerId);
   let captions = response.playerResponse.captions

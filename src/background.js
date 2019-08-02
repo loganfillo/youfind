@@ -9,8 +9,8 @@ chrome.runtime.onInstalled.addListener( () => {
         options: {
             highlightColor: "yellow",
             language: {
-              languageCode: "en",
-              kind: ""
+                languageCode: "en",
+                kind: "asr"
             },
             turnOnCC: true
         }
