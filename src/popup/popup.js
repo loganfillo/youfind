@@ -1,11 +1,11 @@
 import Vue from 'vue';
 import BootstrapVue from 'bootstrap-vue';
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faSearch, faBars, faAngleUp, faAngleDown, faInfoCircle } from '@fortawesome/free-solid-svg-icons'
+import { faSearch, faBars, faAngleUp, faAngleDown, faInfoCircle, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import App from './App';
 
-library.add(faSearch, faBars, faAngleUp, faAngleDown, faInfoCircle);
+library.add(faSearch, faBars, faAngleUp, faAngleDown, faInfoCircle, faExclamationTriangle);
 Vue.component('font-awesome-icon', FontAwesomeIcon)
 
 Vue.use(BootstrapVue);
