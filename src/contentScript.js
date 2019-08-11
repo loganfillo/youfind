@@ -3,11 +3,13 @@ window.addEventListener("message", event => {
     if (event.data.type && (event.data.type == "FROM_WEBPAGE")) {
         switch (event.data.message) {
             case "captionTracks":
-                let message = {
-                    type: event.data.message,
-                    tracks: event.data.tracks
-                }
-                chrome.storage.local.set({ captionTracks: message.tracks });
+                chrome.storage.local.set({ captionTracks: event.data.tracks });
+                // chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+                //     let tabUrl = new URL(tabs[0].url);
+                //     let videoId = tabUrl.searchParams.get("v");
+                //     let videoCaptions = { captionTracks: event.data.tracks, cachedTracks: []};
+                //     chrome.storage.local.set({[videoId]: videoCaptions});
+                //   });
                 break;
             default:
                 break;

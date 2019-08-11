@@ -1,7 +1,6 @@
 let youfind = {
-  onYouTube,
+  getYouTubeVideo,
   connectToPort,
-  getVideoId,
   getOptions,
   storeOptions,
   getCaptionTracks,
@@ -11,13 +10,23 @@ let youfind = {
   seekToTime
 }
 
-function onYouTube() {
+function getYouTubeVideo() {
   return new Promise((resolve, reject) => {
+    let error = {
+      type: "NOT_ON_YOUTUBE_VIDEO",
+      message: "Not on a YouTube video"
+    }
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0].url.includes("youtube.com")) {
-        resolve(true);
+        let tabUrl = new URL(tabs[0].url);
+        let videoId = tabUrl.searchParams.get("v");
+        if (videoId){
+          resolve(videoId)
+        } else {
+          reject(error);
+        }
       } else {
-        resolve(false)
+        reject(error);
       }
     });
   });
@@ -27,16 +36,6 @@ function connectToPort() {
   return new Promise((resolve, reject) => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       resolve(chrome.tabs.connect(tabs[0].id));
-    });
-  });
-}
-
-function getVideoId() {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      let tabUrl = new URL(tabs[0].url);
-      let videoId = tabUrl.searchParams.get("v");
-      resolve(videoId);
     });
   });
 }
@@ -68,7 +67,10 @@ function getCaptionTracks() {
         if (result.captionTracks.length > 0) {
           resolve(result.captionTracks);
         } else {
-          reject({ message: "This video does not have any caption tracks" });
+          reject({
+            type: "NO_CAPTION_TRACKS", 
+            message: "This video does not have any caption tracks" 
+          });
         }
       }
     });
@@ -101,11 +103,24 @@ function getParsedTrack(captionTracks, language, videoId) {
                   resolve(parsedTrack);
                 })
                 .catch(() => {
-                  reject({ message: "Track too large for memory" });
+                  reject({ 
+                    type: "TRACK_TOO_LARGE_FOR_MEMORY", 
+                    message: "Track too large for memory" 
+                  });
                 });
+            })
+            .catch( error => {
+              reject({
+                type: "COULD_NOT_PARSE_TRACK",
+                message: "Could not fetch and parse current track",
+                error: error
+              });
             });
         } else {
-          reject({ message: "No track available for selected language" });
+          reject({ 
+            type: "NO_CAPTION_TRACKS_FOR_LANGUAGE",
+            message: "No track available for selected language" 
+          });
         }
       }
     });
@@ -207,7 +222,7 @@ function fetchAndParseTrack(track) {
         resolve(parseXML(trackDOM));
       })
       .catch(error => {
-        reject({ message: "Could not fetch and parse current track", error: error });
+        reject(error);
       });
   });
 }
