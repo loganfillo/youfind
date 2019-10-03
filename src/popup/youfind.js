@@ -1,9 +1,10 @@
 let youfind = {
   getVideoId,
+  getParsedTrack,
+  getLanguages,
   connectToPort,
   getOptions,
   storeOptions,
-  getParsedTrack,
   getQuerySession,
   storeQuerySession,
   seekToTime,
@@ -34,6 +35,22 @@ function getVideoId() {
       } else {
         reject(error);
       }
+    });
+  });
+}
+
+/**
+ * Gets the languages for the videio with the given video id
+ * 
+ * @returns Promise that resolves with the languages
+ * 
+ * @param {string} videoId 
+ */
+function getLanguages(videoId) {
+  return new Promise(resolve => {
+    chrome.storage.local.get([videoId], result => {
+        let video = result[videoId];
+        resolve(video.languages);
     });
   });
 }
@@ -81,7 +98,7 @@ function storeOptions(options) {
  * Gets the parsed track from the given video id in the given language
  * 
  * If the parsed track already exists in storage, returns that, otherwise
- * fetches and parses the track from the video's caption urls
+ * fetches, parses and returns the track from the video's caption urls
  * 
  * If the video contains no captions, has no captions for the desired language,
  * or could not correctly fetch and parse the track, rejects Promise with error
@@ -90,7 +107,7 @@ function storeOptions(options) {
  * @returns Promise that resolve with parsed caption track, or rejects with 
  *          error specifying what went wrong
  * 
- * @param {string} language desired langauge containing kind and language code
+ * @param {any} language desired langauge containing kind and language code
  * @param {string} videoId desired video id
  */
 function getParsedTrack(language, videoId) {  

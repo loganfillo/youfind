@@ -223,20 +223,6 @@ export default {
         this.$refs.resultsContainer.scrollTop = margin;
       }
     },
-    createLanguageOptions: function() {
-      this.captionsTracks.forEach(track => {
-        let kind = "";
-        if (typeof track.kind != "undefined") kind = track.kind;
-        let option = {
-          value: {
-            languageCode: track.languageCode,
-            kind: kind
-          },
-          text: track.name.simpleText
-        };
-        this.languageOptions.push(option);
-      });
-    },
     submitOptionsForm: function() {
       this.loading = true;
       youfind.storeOptions(this.optionsForm).then(() => {
@@ -263,8 +249,7 @@ export default {
         this.port = await youfind.connectToPort();
         this.currentOptions = await youfind.getOptions();
         this.optionsForm = this.currentOptions;
-        // TODO: this is broken, needs caption urls from video
-        // this.createLanguageOptions(); 
+        this.languageOptions = await youfind.getLanguages(this.videoId);
         this.currentTrack = await youfind.getParsedTrack(
           this.currentOptions.language,
           this.videoId

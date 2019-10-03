@@ -6,7 +6,18 @@ window.addEventListener("message", event => {
                 let videoId = event.data.videoId;
                 let video = {
                     videoId: videoId,
-                    captionTrackUrls: event.data.tracks
+                    captionTrackUrls: event.data.tracks,
+                    languages: event.data.tracks.map(track => {
+                        let kind = "";
+                        if (typeof track.kind != "undefined") kind = track.kind;
+                        return {
+                          value: {
+                            languageCode: track.languageCode,
+                            kind: kind
+                          },
+                          text: track.name.simpleText
+                        };
+                    })
                 }
                 chrome.storage.local.get(["localStorageVideoQueue"], result => {
                     let queue = result.localStorageVideoQueue;
