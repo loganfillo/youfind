@@ -1,15 +1,22 @@
-window.addEventListener("message", event => {
+window.addEventListener("message", event => {    
     if (event.source != window) return;
-    if (event.data.type && (event.data.type == "FROM_WEBPAGE")) {
+    if (event.data.type && (event.data.type == "FROM_WEBPAGE")) {        
         switch (event.data.message) {
-            case "captionTracks":
-                chrome.storage.local.set({ captionTracks: event.data.tracks });
-                // chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-                //     let tabUrl = new URL(tabs[0].url);
-                //     let videoId = tabUrl.searchParams.get("v");
-                //     let videoCaptions = { captionTracks: event.data.tracks, cachedTracks: []};
-                //     chrome.storage.local.set({[videoId]: videoCaptions});
-                //   });
+            case "captionTrackUrls":
+                let videoId = event.data.videoId;
+                let video = {
+                    videoId: videoId,
+                    captionTrackUrls: event.data.tracks
+                }
+                chrome.storage.local.get(["localStorageVideoQueue"], result => {
+                    let queue = result.localStorageVideoQueue;
+                    if (!queue.includes(videoId)) {
+                        queue.push(videoId)
+                        chrome.storage.local.set({ localStorageVideoQueue: queue }, () => {
+                            chrome.storage.local.set({ [videoId]: video});
+                        });
+                    }
+                });
                 break;
             default:
                 break;

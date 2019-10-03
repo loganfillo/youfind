@@ -154,7 +154,7 @@ export default {
   methods: {
     seekToTime: function(caption, index) {
       this.querySession.index = index;
-      youfind.seekToTime(this.port, caption.start - 0.5);
+      youfind.seekToTime(this.port, caption.start);
     },
     formatTime: function(time) {
       function getTime(t, scale, mod) {
@@ -186,13 +186,6 @@ export default {
       }
       return stringWithMatch;
     },
-    storeQuerySession: function(changingQuery) {
-      if (changingQuery) {
-        this.querySession.index = -1;
-      }
-      this.scrollToFit();
-      youfind.storeQuerySession(this.querySession);
-    },
     keyListener: function(event) {
       if (event.keyCode == 38) {
         this.navigateCaptions(0);
@@ -214,13 +207,19 @@ export default {
       }
       this.storeQuerySession(false);
     },
+    storeQuerySession: function(changingQuery) {
+      if (changingQuery) {
+        this.querySession.index = -1;
+      }
+      this.scrollToFit();
+      youfind.storeQuerySession(this.querySession);
+    },
     scrollToFit: function() {
       if (this.querySession.index < 0) {
         this.$refs.resultsContainer.scrollTop = 0;
-      } else if (this.querySession.index) {
       } else {
         let captionSize = 75;
-        let margin = this.querySession.index * captionSize;
+        let margin = this.querySession.index * captionSize;        
         this.$refs.resultsContainer.scrollTop = margin;
       }
     },
@@ -244,11 +243,11 @@ export default {
         this.currentOptions = this.optionsForm;
         youfind
           .getParsedTrack(
-            this.captionsTracks,
             this.currentOptions.language,
             this.videoId
           )
           .then(result => {
+            this.hasCaptionsForLanguage = true;
             this.currentTrack = result;
             this.loading = false;
             this.$bvModal.hide("options-modal");
@@ -259,23 +258,21 @@ export default {
     initialize: async function() {
       this.loading = true;
       try {
-        this.videoId = await youfind.getYouTubeVideo();
+        this.videoId = await youfind.getVideoId();
         this.onYouTubeVideo = true;
         this.port = await youfind.connectToPort();
         this.currentOptions = await youfind.getOptions();
         this.optionsForm = this.currentOptions;
-        this.captionsTracks = await youfind.getCaptionTracks();
+        // TODO: this is broken, needs caption urls from video
+        // this.createLanguageOptions(); 
         this.currentTrack = await youfind.getParsedTrack(
-          this.captionsTracks,
           this.currentOptions.language,
           this.videoId
         );
         this.querySession = await youfind.getQuerySession(this.videoId);
-        this.createLanguageOptions();
-        this.scrollToFit();
         this.errors = false;
       } catch (error) {
-        console.log(error);
+        console.log("LOG: error, " , error);
         switch (error.type) {
           case "NOT_ON_YOUTUBE_VIDEO":
             this.onYouTubeVideo = false;
@@ -304,7 +301,10 @@ export default {
   },
   mounted() {
     this.initialize().then(() => {
-      if (!this.errors) this.$refs.searchBar.focus();
+      if (!this.errors) {
+        this.scrollToFit();
+        this.$refs.searchBar.focus();
+      }
     });
   }
 };

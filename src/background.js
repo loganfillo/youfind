@@ -1,6 +1,6 @@
 chrome.runtime.onInstalled.addListener( () => {
     chrome.storage.local.set({
-        localStorageKeyQueue: [], 
+        localStorageVideoQueue: [], 
         querySession: {
             videoId: null,
             query: "",

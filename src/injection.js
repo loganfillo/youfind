@@ -1,23 +1,28 @@
-let player = null;
+let player = 0;
 
 document.body.addEventListener("yt-navigate-finish", event => {
   console.log("navigate finished", event);
+  var url = new URL(window.location.href);
+  var urlParams = new URLSearchParams(url.search);
+  var videoId = urlParams.get("v");
   let response = event.detail.response;
-  // TODO player might be undefined??
+  // TODO response.player might be undefined??
   let playerId = response.player.attrs.id;
   player = document.getElementById(playerId);
   let captions = response.playerResponse.captions
   if (typeof captions == "undefined"){
     window.postMessage({
       type: "FROM_WEBPAGE", 
-      message:"captionTracks", 
+      message:"captionTrackUrls",
+      videoId: videoId,
       tracks: []
     }, "*");
   } else {
     let captionTracks = captions.playerCaptionsTracklistRenderer.captionTracks;
     window.postMessage({
       type: "FROM_WEBPAGE", 
-      message:"captionTracks", 
+      message:"captionTrackUrls", 
+      videoId: videoId,
       tracks: captionTracks
     }, "*");
   }  

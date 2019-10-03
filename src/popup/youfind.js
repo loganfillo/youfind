@@ -1,16 +1,22 @@
 let youfind = {
-  getYouTubeVideo,
+  getVideoId,
   connectToPort,
   getOptions,
   storeOptions,
-  getCaptionTracks,
   getParsedTrack,
   getQuerySession,
   storeQuerySession,
-  seekToTime
+  seekToTime,
 }
 
-function getYouTubeVideo() {
+/* Public Namespace*/
+
+/**
+ * Gets the video id if the current selected tab is a youtube video
+ * 
+ * @returns Promise that resolve with video id or rejects with error
+ */
+function getVideoId() {
   return new Promise((resolve, reject) => {
     let error = {
       type: "NOT_ON_YOUTUBE_VIDEO",
@@ -32,6 +38,11 @@ function getYouTubeVideo() {
   });
 }
 
+/**
+ * Connects to the content script in the current tab
+ * 
+ * @returns Promise that resolves with port connection object
+ */
 function connectToPort() {
   return new Promise((resolve, reject) => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -40,6 +51,11 @@ function connectToPort() {
   });
 }
 
+/**
+ * Gets the current options (lang, autoCC, highlight color)
+ * 
+ * @returns Promise that resolves with current options
+ */
 function getOptions() {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["options"], result => {
@@ -48,6 +64,11 @@ function getOptions() {
   });
 }
 
+/**
+ * Store the current selected options (lang, autoCC, highlight color)
+ * 
+ * @param {any} options the options to store
+ */
 function storeOptions(options) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.set({ options }, () => {
@@ -56,77 +77,77 @@ function storeOptions(options) {
   });
 }
 
-function getCaptionTracks() {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["captionTracks"], result => {
-      if (!result.hasOwnProperty("captionTracks")) {
-        setTimeout(() => {
-          resolve(getCaptionTracks());
-        }, 500);
-      } else {
-        if (result.captionTracks.length > 0) {
-          resolve(result.captionTracks);
-        } else {
-          reject({
-            type: "NO_CAPTION_TRACKS", 
-            message: "This video does not have any caption tracks" 
-          });
-        }
-      }
-    });
-  });
-}
-
-function getParsedTrack(captionTracks, language, videoId) {
-  return new Promise((resolve, reject) => {
-    let key = videoId + language.languageCode + language.kind;
-    chrome.storage.local.get([key], result => {
-      if (result.hasOwnProperty(key)) {
-        resolve(result[key])
-      } else {
-        let unparsedTrack = 0;
-        captionTracks.find(track => {
-          if (track.languageCode == language.languageCode) {
-            if ((!track.hasOwnProperty("kind") && language.kind == "") || (track.kind == language.kind)) {
-              unparsedTrack = track;
-            }
-          }
+/**
+ * Gets the parsed track from the given video id in the given language
+ * 
+ * If the parsed track already exists in storage, returns that, otherwise
+ * fetches and parses the track from the video's caption urls
+ * 
+ * If the video contains no captions, has no captions for the desired language,
+ * or could not correctly fetch and parse the track, rejects Promise with error
+ * describing what went wrong
+ * 
+ * @returns Promise that resolve with parsed caption track, or rejects with 
+ *          error specifying what went wrong
+ * 
+ * @param {string} language desired langauge containing kind and language code
+ * @param {string} videoId desired video id
+ */
+function getParsedTrack(language, videoId) {  
+  return new Promise( async (resolve, reject) => {
+    let key = language.languageCode + language.kind;
+    let video = await getVideo(videoId);
+    if (!video[key]) {
+      let unparsedTrack = 0;
+      let captionTrackUrls = video.captionTrackUrls;
+      if (captionTrackUrls.length <= 0) {
+        reject({
+          type: "NO_CAPTION_TRACKS", 
+          message: "This video does not have any caption tracks" 
         });
-        if (unparsedTrack) {
-          fetchAndParseTrack(unparsedTrack)
-            .then(parsedTrack => {
-              addKeyToQueue(key, parsedTrack.length)
-                .then(() => {
-                  chrome.storage.local.set({ [key]: parsedTrack }, () => {
-                    chrome.storage.local.get(null, result => console.log(result));
-                  });
-                  resolve(parsedTrack);
-                })
-                .catch(() => {
-                  reject({ 
-                    type: "TRACK_TOO_LARGE_FOR_MEMORY", 
-                    message: "Track too large for memory" 
-                  });
-                });
-            })
-            .catch( error => {
-              reject({
-                type: "COULD_NOT_PARSE_TRACK",
-                message: "Could not fetch and parse current track",
-                error: error
-              });
-            });
-        } else {
-          reject({ 
-            type: "NO_CAPTION_TRACKS_FOR_LANGUAGE",
-            message: "No track available for selected language" 
+      }
+      captionTrackUrls.find(trackUrl => {
+        if (trackUrl.languageCode == language.languageCode) {
+          if ((!trackUrl.hasOwnProperty("kind") && language.kind == "") || (trackUrl.kind == language.kind)) {
+            unparsedTrack = trackUrl;
+          }
+        }
+      });
+      if (unparsedTrack) {
+        try {
+          let parsedTrack = await fetchAndParseTrack(unparsedTrack);
+          await adjustLocalStorage(videoId, parsedTrack.length);
+          await storeParsedTrack(parsedTrack, video, videoId, key);
+          resolve(parsedTrack);
+        } catch(error) {
+          reject({
+            type: "COULD_NOT_PARSE_TRACK",
+            message: "Could not fetch and parse current track",
+            error: error
           });
         }
+      } else {
+        reject({ 
+          type: "NO_CAPTION_TRACKS_FOR_LANGUAGE",
+          message: "No track available for selected language" 
+        });
       }
-    });
+    } else {
+      resolve(video[key]);
+    }
   })
 }
 
+/**
+ * Gets the query session from storage, if the query session's
+ * video id is the one given, return the session, otherwise returns
+ * an empty session with the given video id, an empty query, and
+ * negative index
+ *
+ * @returns Promise that resolves with the query session
+ * 
+ * @param {string} videoId the video id of the desired session
+ */
 function getQuerySession(videoId) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["querySession"], result => {
@@ -144,6 +165,11 @@ function getQuerySession(videoId) {
   });
 }
 
+/**
+ * Store the current query session (video id, query string, index)
+ * 
+ * @param {any} querySession the session to store
+ */
 function storeQuerySession(querySession) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.set({ querySession }, () => {
@@ -153,62 +179,130 @@ function storeQuerySession(querySession) {
 
 }
 
-function seekToTime(port, time) {
+/**
+ * Seeks the video in the current page to the given time
+ * 
+ * @param {any} port the port to send seek message to
+ * @param {number} time the time to seek to 
+ */
+function seekToTime(port, time) {  
   port.postMessage({
     type: "seekToTime",
     time: time
   });
 }
 
-// const MAX_STORAGE = 5242880;
-const MAX_STORAGE = 300000;
+/* Private Namespace */
 
-function addKeyToQueue(key, trackLength) {
+function getVideo(videoId) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["localStorageKeyQueue"], async result => {
-      let queue = result.localStorageKeyQueue;
-      // VERY rough over-approximation      
-      let trackSizeInBytes = trackLength * 100;
-      if (trackSizeInBytes > MAX_STORAGE) {
-        reject();
+    chrome.storage.local.get([videoId], result => {
+      if (!result[videoId]) {
+        setTimeout(() => {
+          resolve(getVideo(videoId));
+        }, 500);
       } else {
-        chrome.storage.local.get(null, result => console.log(result));
-        while (!await isEnoughLocalStorage(trackSizeInBytes)) {
-          queue = await removeKeyFromQueue(queue);
-        }
-        queue.push(key);        
-        chrome.storage.local.set({ localStorageKeyQueue: queue }, () => {
-          resolve();
-        });
+        resolve(result[videoId]);
       }
     });
   });
 }
 
+// const MAX_STORAGE = 5242880; //REAL STORAGE AMOUNT
+const MAX_STORAGE = 30000;
+
+function adjustLocalStorage(videoId, trackLength) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["localStorageVideoQueue"], async result => {
+      let originalQueue = result.localStorageVideoQueue;
+      try {
+        await logStorage("LOG: before adjusting queue");
+        let queue = await adjustQueue(originalQueue, videoId, trackLength);
+        await logStorage("LOG: after adjusting queue");
+        chrome.storage.local.set({ localStorageVideoQueue: queue }, () => {
+          resolve();
+        });
+      } catch(error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+function storeParsedTrack(parsedTrack, video, videoId, key){
+  return new Promise(async (resolve, reject) => {
+    await logStorage("LOG: storing video " + videoId);
+    video[key] = parsedTrack;
+    chrome.storage.local.set({ [videoId]: video }, () => {
+      chrome.storage.local.get(null, result => console.log("LOG: after storing", result)); // DEBUG
+      resolve();
+    });
+  });
+}
+
+function adjustQueue(queue, videoId, trackLength){
+  return new Promise( async (resolve, reject) => { 
+    // VERY rough over-approximation      
+    let trackSizeInBytes = trackLength * 100;
+    if (trackSizeInBytes > MAX_STORAGE) {
+      reject({ 
+        type: "TRACK_TOO_LARGE_FOR_MEMORY", 
+        message: "Track too large for memory", 
+        memoryOverflow: trackSizeInBytes - MAX_STORAGE 
+      });
+    } else {
+      while (!await isEnoughLocalStorage(trackSizeInBytes)) {
+        try {
+          await logStorage("LOG: before removing " + videoId);
+          queue = await removeKeyFromQueue(queue, videoId);
+          await logStorage("LOG: after removing " + videoId);
+        } catch (error){
+          reject(error)
+        }
+      }
+      resolve(queue);
+    }
+  });
+}
+
 function isEnoughLocalStorage(trackSizeInBytes) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.getBytesInUse(null, bytesInUse => {
+    chrome.storage.local.getBytesInUse(null, async bytesInUse => {
       if (MAX_STORAGE < (trackSizeInBytes + bytesInUse)) {
-        console.log("not enough storage");
+        await logStorage("LOG: not enough storage, overflow " + (bytesInUse + trackSizeInBytes - MAX_STORAGE));
         resolve(false)
       } else {
-        console.log("enough storage");
         resolve(true);
       }
     });
   });
 }
 
-function removeKeyFromQueue(queue) {
-  return new Promise((resolve, reject) => {
+function removeKeyFromQueue(queue, videoId) {
+  return new Promise(async (resolve, reject) => {
     if (queue.length > 0) {
-      let keyToRemove = queue.shift();
-      console.log("removing", keyToRemove);
-      chrome.storage.local.remove([keyToRemove], () => {
+      let videoIdToRemove = queue[0];
+      if (videoIdToRemove == videoId){
+        reject({
+          type: "CANNOT_REMOVE_AND_ADD_FROM_SAME_VIDEO",
+          message: "Cannot remove video data from cache to add data from same video" 
+        })
+      } else {
+        let keyToRemove = queue.shift();
+        await removeVideo(keyToRemove);
         resolve(queue);
-      });
+      }
     }
   });
+}
+
+function removeVideo(videoId) {
+  return new Promise(async (resolve, reject) => {
+    await logStorage("LOG: removing video " + videoId);
+    chrome.storage.local.remove([videoId], () => {
+      resolve();
+    });
+  }); 
 }
 
 function fetchAndParseTrack(track) {
@@ -253,5 +347,13 @@ function escapeXML(xmlText) {
     .replace(/&lt;/g, "<");
 }
 
-export default youfind;
+function logStorage(message) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(null, result => {
+      console.log( message , result)
+      resolve();
+    });    
+  })
+}
 
+export default youfind;
