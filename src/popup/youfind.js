@@ -1,3 +1,9 @@
+/**
+ * This module contains all the functionality utilizing the chrome api
+ * needed for youfind to work. The popup application calls these functions
+ * as its only way of interacting with the chrome api
+ */
+
 let youfind = {
   getVideoId,
   getParsedTrack,
@@ -10,7 +16,11 @@ let youfind = {
   seekToTime,
 }
 
+export default youfind;
+
+
 /* Public Namespace*/
+
 
 /**
  * Gets the video id if the current selected tab is a youtube video
@@ -209,7 +219,9 @@ function seekToTime(port, time) {
   });
 }
 
+
 /* Private Namespace */
+
 
 function getVideo(videoId) {
   return new Promise((resolve, reject) => {
@@ -372,5 +384,3 @@ function logStorage(message) {
     });    
   })
 }
-
-export default youfind;
